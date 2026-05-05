@@ -13,7 +13,17 @@ Plantilla disponible en [`_template/`](_template/).
 > Marca con `[x]` cuando el flujo esté disponible.
 
 - [ ] `_template/` — plantilla de referencia (no es un flujo real)
-- [x] [`lead-desde-formulario-hibrido/`](lead-desde-formulario-hibrido/) — Lead desde formulario web con `/leads/complex` + `PATCH /contacts/:id`
+- [x] [`lead-desde-formulario-simple/`](lead-desde-formulario-simple/) — Solo `/leads/complex` (mínimo)
+- [x] [`lead-desde-formulario-hibrido/`](lead-desde-formulario-hibrido/) — `/leads/complex` + `PATCH /contacts/:id` (refresca datos)
+- [x] [`lead-desde-formulario-busqueda-manual/`](lead-desde-formulario-busqueda-manual/) — Búsqueda explícita + ramas crear/usar (máximo control)
+
+### Comparativa rápida
+
+| Variante           | Llamadas API | Deduplica | Actualiza contacto | Lógica condicional | Race-safe |
+|--------------------|--------------|-----------|--------------------|--------------------|-----------|
+| `simple`           | 1            | sí (Kommo) | no                 | no                 | sí        |
+| `hibrido`          | 2            | sí (Kommo) | sí                 | limitada           | sí        |
+| `busqueda-manual`  | 2-3          | sí (n8n)   | opcional           | total              | no        |
 
 ---
 

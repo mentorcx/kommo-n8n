@@ -1,0 +1,184 @@
+{
+  "name": "Kommo - Lead desde formulario (busqueda manual)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kommo-form-lead-manual",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook formulario",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "kommo-form-lead-manual"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\n\nconst email = (body.email || '').toString().trim().toLowerCase();\n\nlet phone = (body.whatsapp || '').toString();\nphone = phone.replace(/[^+\\d]/g, '');\nif (phone && !phone.startsWith('+')) phone = '+' + phone;\n\nreturn {\n  json: {\n    first_name: (body.nombre || '').toString().trim(),\n    last_name: (body.apellido || '').toString().trim(),\n    email,\n    phone\n  }\n};"
+      },
+      "id": "node-normalize",
+      "name": "Normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://{{ $env.KOMMO_SUBDOMAIN }}.kommo.com/api/v4/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "={{ $json.email }}" },
+            { "name": "limit", "value": "10" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "neverError": true } },
+          "retry": { "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000 }
+        }
+      },
+      "id": "node-search",
+      "name": "GET /contacts?query=email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "REPLACE_WITH_CREDENTIAL_ID", "name": "Kommo API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const norm = $('Normalizar').item.json;\nconst data = $input.item.json || {};\nconst contacts = (data._embedded && data._embedded.contacts) || [];\n\nlet matchId = null;\nfor (const c of contacts) {\n  for (const cf of (c.custom_fields_values || [])) {\n    const code = (cf.field_code || '').toUpperCase();\n    for (const v of (cf.values || [])) {\n      const raw = (v.value || '').toString().trim();\n      if (code === 'EMAIL' && raw.toLowerCase() === norm.email) {\n        matchId = c.id;\n        break;\n      }\n      if (code === 'PHONE') {\n        let p = raw.replace(/[^+\\d]/g, '');\n        if (p && !p.startsWith('+')) p = '+' + p;\n        if (p === norm.phone) { matchId = c.id; break; }\n      }\n    }\n    if (matchId) break;\n  }\n  if (matchId) break;\n}\n\nreturn { json: { ...norm, contact_id: matchId, found: matchId !== null } };"
+      },
+      "id": "node-validate",
+      "name": "Validar match exacto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "found-cond",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if",
+      "name": "IF existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.KOMMO_SUBDOMAIN }}.kommo.com/api/v4/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"first_name\": \"{{ $json.first_name }}\",\n    \"last_name\": \"{{ $json.last_name }}\",\n    \"custom_fields_values\": [\n      { \"field_code\": \"EMAIL\", \"values\": [{ \"value\": \"{{ $json.email }}\" }] },\n      { \"field_code\": \"PHONE\", \"values\": [{ \"value\": \"{{ $json.phone }}\" }] }\n    ]\n  }\n]",
+        "options": {
+          "retry": { "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000 }
+        }
+      },
+      "id": "node-create-contact",
+      "name": "POST /contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 420],
+      "credentials": {
+        "httpHeaderAuth": { "id": "REPLACE_WITH_CREDENTIAL_ID", "name": "Kommo API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const created = $input.item.json;\nconst contacts = (created._embedded && created._embedded.contacts) || [];\nconst id = contacts[0] && contacts[0].id;\nreturn { json: { contact_id: id } };"
+      },
+      "id": "node-extract-id",
+      "name": "Extraer contact_id (nuevo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 420]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "input1"
+      },
+      "id": "node-merge",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.KOMMO_SUBDOMAIN }}.kommo.com/api/v4/leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"name\": \"Lead web - {{ $('Normalizar').item.json.first_name }} {{ $('Normalizar').item.json.last_name }}\",\n    \"_embedded\": {\n      \"contacts\": [{ \"id\": {{ $json.contact_id }} }]\n    }\n  }\n]",
+        "options": {
+          "retry": { "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000 }
+        }
+      },
+      "id": "node-create-lead",
+      "name": "POST /leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "REPLACE_WITH_CREDENTIAL_ID", "name": "Kommo API" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"lead_id\": {{ $json._embedded.leads[0].id }},\n  \"contact_id\": {{ $('Merge').item.json.contact_id }}\n}"
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook formulario": { "main": [[{ "node": "Normalizar", "type": "main", "index": 0 }]] },
+    "Normalizar": { "main": [[{ "node": "GET /contacts?query=email", "type": "main", "index": 0 }]] },
+    "GET /contacts?query=email": { "main": [[{ "node": "Validar match exacto", "type": "main", "index": 0 }]] },
+    "Validar match exacto": { "main": [[{ "node": "IF existe?", "type": "main", "index": 0 }]] },
+    "IF existe?": {
+      "main": [
+        [{ "node": "Merge", "type": "main", "index": 0 }],
+        [{ "node": "POST /contacts", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST /contacts": { "main": [[{ "node": "Extraer contact_id (nuevo)", "type": "main", "index": 0 }]] },
+    "Extraer contact_id (nuevo)": { "main": [[{ "node": "Merge", "type": "main", "index": 1 }]] },
+    "Merge": { "main": [[{ "node": "POST /leads", "type": "main", "index": 0 }]] },
+    "POST /leads": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "",
+  "meta": { "templateCreatedBy": "kommo-n8n wiki" }
+}
