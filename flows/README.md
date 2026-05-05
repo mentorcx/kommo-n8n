@@ -13,6 +13,7 @@ Plantilla disponible en [`_template/`](_template/).
 > Marca con `[x]` cuando el flujo esté disponible.
 
 - [ ] `_template/` — plantilla de referencia (no es un flujo real)
+- [x] [`lead-desde-formulario-hibrido/`](lead-desde-formulario-hibrido/) — Lead desde formulario web con `/leads/complex` + `PATCH /contacts/:id`
 
 ---
 

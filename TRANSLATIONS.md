@@ -25,4 +25,5 @@ Estados / States:
 
 | Flujo / Flow            | es | en       |
 |-------------------------|----|----------|
-| `_template/`            | OK | Missing  |
+| `_template/`                       | OK | Missing  |
+| `lead-desde-formulario-hibrido/`   | OK | Missing  |
