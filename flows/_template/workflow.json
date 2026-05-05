@@ -1,0 +1,12 @@
+{
+  "name": "Plantilla — Reemplazar con el nombre del flujo",
+  "nodes": [],
+  "connections": {},
+  "active": false,
+  "settings": {},
+  "versionId": "",
+  "meta": {
+    "templateCreatedBy": "kommo-n8n wiki",
+    "instructions": "Reemplaza este archivo con el export real de tu workflow de n8n (Download). Asegurate de eliminar credenciales antes de subirlo."
+  }
+}
