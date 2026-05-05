@@ -31,4 +31,4 @@ Lee [`CONTRIBUTING.md`](CONTRIBUTING.md). En resumen:
 
 ## Licencia
 
-Pendiente de definir por el mantenedor.
+[MIT](LICENSE). Al contribuir aceptas que tu aporte se distribuya bajo la misma licencia.

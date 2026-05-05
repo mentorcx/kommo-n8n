@@ -31,4 +31,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). TL;DR:
 
 ## License
 
-To be defined by the maintainer.
+[MIT](LICENSE). By contributing you agree that your contribution is distributed under the same license.
